@@ -1,4 +1,4 @@
-FROM python:3.11-slim AS builder
+FROM python:3.11-slim AS uv_base
 
 # Install build dependencies and curl for uv installer
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -17,14 +17,20 @@ COPY . .
 # Install project dependencies into a local venv
 RUN uv sync --no-dev
 
+FROM python:3.11-slim AS uv_project
+WORKDIR /app
+# Copy venv and app from builder
+COPY --from=uv_base /app/.venv /app/.venv
+COPY --from=uv_base /app/src /app/src
+
 FROM python:3.11-slim
 
 WORKDIR /app
 ENV PATH="/app/.venv/bin:${PATH}"
 
 # Copy venv and app from builder
-COPY --from=builder /app/.venv /app/.venv
-COPY --from=builder /app/src /app/src
+COPY --from=uv_project /app/.venv /app/.venv
+COPY --from=uv_project /app/src /app/src
 
 EXPOSE 9001
 
